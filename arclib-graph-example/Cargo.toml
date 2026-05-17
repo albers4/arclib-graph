@@ -1,0 +1,9 @@
+[package]
+name = "arclib-graph-example"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+arclib-graph-spec = { path = "../arclib-graph-spec" }
+arclib-graph-impl = { path = "../arclib-graph-impl" }

@@ -1,0 +1,17 @@
+[package]
+name = "arclib-graph-py"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[lib]
+name = "arclib_graph"
+crate-type = ["cdylib"]
+
+[dependencies]
+arclib-graph-spec = { path = "../arclib-graph-spec" }
+arclib-graph-impl = { path = "../arclib-graph-impl" }
+pyo3 = { version = "0.22", features = ["extension-module"] }
+
+[dev-dependencies]

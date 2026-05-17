@@ -1,0 +1,13 @@
+[workspace]
+resolver = "2"
+members = [
+    "arclib-graph-spec",
+    "arclib-graph-impl",
+    "arclib-graph-example",
+    "arclib-graph-py",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "LGPL-2.1+"
