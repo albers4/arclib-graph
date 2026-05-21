@@ -51,7 +51,7 @@ rust-test:
 	cargo test
 
 python-test: python-dev-deps
-	cd $(PY_PKG_DIR) && ../$(PYTHON) -m pytest tests
+	cd $(PY_PKG_DIR) && ../$(PYTHON) -m pytest -s tests
 
 test: rust-test python-test
 
@@ -59,7 +59,7 @@ test: rust-test python-test
 
 .PHONY: rust-benchmark python-benchmark benchmark
 rust-benchmark:
-	cargo bench -p arclib-core-impl
+	cargo bench -p arclib-graph-impl
 
 python-benchmark: python-dev-deps
 	cd $(PY_PKG_DIR) && ../$(PYTHON) -m pytest benches

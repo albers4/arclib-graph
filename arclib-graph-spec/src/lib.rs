@@ -1,14 +1,10 @@
 // Copyright (c) 2026 ARC (Applied Research & Computation)
 // SPDX-License-Identifier: LGPL-2.1-or-later
 
-/// Specification: v1.0
-pub trait ArrayLike {
-    type Item;
-    type Error;
+mod compiler;
+/// Specification: v0.1.0
+mod graph;
+mod knowledge;
+mod runtime;
 
-    fn get(&self, index: usize) -> Result<&Self::Item, Self::Error>;
-}
-
-pub trait ArrayLikeMut: ArrayLike {
-    fn set(&mut self, index: usize, value: Self::Item) -> Result<(), Self::Error>;
-}
+pub use graph::{Graph, Node, NodeId};
