@@ -8,7 +8,7 @@ use crate::BaseGraph;
 impl Graph for BaseGraph {
     fn get_node<T: Node>(&self, id: &NodeId) -> Option<&T> {
         let &(type_id, index) = self.storage.index_map.get(id)?;
-        if type_id != T::TYPE_ID {
+        if type_id != T::type_id_static() {
             return None;
         }
         self.storage
@@ -20,7 +20,7 @@ impl Graph for BaseGraph {
 
     fn get_node_mut<T: Node>(&mut self, id: &NodeId) -> Option<&mut T> {
         let &(type_id, index) = self.storage.index_map.get(id)?;
-        if type_id != T::TYPE_ID {
+        if type_id != T::type_id_static() {
             return None;
         }
         self.storage
@@ -34,7 +34,7 @@ impl Graph for BaseGraph {
         let pool = self
             .storage
             .pools
-            .get(&T::TYPE_ID)
+            .get(&T::type_id_static())
             .expect("Pool not registered");
         pool.downcast_ref::<Vec<T>>().expect("Type mismatch").iter()
     }
@@ -43,7 +43,7 @@ impl Graph for BaseGraph {
         let pool = self
             .storage
             .pools
-            .get_mut(&T::TYPE_ID)
+            .get_mut(&T::type_id_static())
             .expect("Pool not registered");
         pool.downcast_mut::<Vec<T>>()
             .expect("Type mismatch")
@@ -55,14 +55,16 @@ impl Graph for BaseGraph {
         let pool = self
             .storage
             .pools
-            .get_mut(&T::TYPE_ID)
+            .get_mut(&T::type_id_static())
             .expect("Pool not registered. Call register_pool::<T>() first.");
         let vec = pool
             .downcast_mut::<Vec<T>>()
             .expect("Type mismatch in pool");
         let index = vec.len();
         vec.push(node);
-        self.storage.index_map.insert(id, (T::TYPE_ID, index));
+        self.storage
+            .index_map
+            .insert(id, (T::type_id_static(), index));
 
         id
     }
@@ -71,7 +73,7 @@ impl Graph for BaseGraph {
     fn register_pool<T: Node>(&mut self) {
         self.storage
             .pools
-            .entry(T::TYPE_ID)
+            .entry(T::type_id_static())
             .or_insert_with(|| Box::new(Vec::<T>::new()));
     }
 

@@ -20,5 +20,5 @@ fn graph_creation() {
 
     let res: &BaseNode = graph.get_node(&base_node_id).unwrap();
 
-    assert_eq!(res.as_f32(), Some(16.0));
+    assert_eq!(res.payload.as_f32(), Some(16.0));
 }

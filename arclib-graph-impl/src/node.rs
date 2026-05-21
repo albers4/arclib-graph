@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: LGPL-2.1-or-later
 
 use crate::{DType, utils::fnv1a_hash};
-use arclib_graph_spec::Node;
+use arclib_graph_spec::{ContextValue, GraphContext, Node};
 use half::f16;
 use uuid::Uuid;
 
@@ -18,6 +18,26 @@ pub enum Payload {
     ScalarF32(f32),
     ScalarF64(f64),
     Symbol(Box<String>),
+}
+
+impl Payload {
+    pub fn as_f32(&self) -> Option<f32> {
+        match &self {
+            Payload::ScalarF16(v) => Some(v.to_f32()),
+            Payload::ScalarF32(v) => Some(*v),
+            Payload::ScalarF64(v) => Some(*v as f32),
+            Payload::Symbol(_) => None,
+        }
+    }
+
+    pub fn as_f64(&self) -> Option<f64> {
+        match &self {
+            Payload::ScalarF16(v) => Some(v.to_f64()),
+            Payload::ScalarF32(v) => Some(*v as f64),
+            Payload::ScalarF64(v) => Some(*v),
+            Payload::Symbol(_) => None,
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -49,30 +69,40 @@ impl BaseNode {
     pub fn value(&self) -> &Payload {
         &self.payload
     }
-
-    pub fn as_f32(&self) -> Option<f32> {
-        match &self.payload {
-            Payload::ScalarF16(v) => Some(v.to_f32()),
-            Payload::ScalarF32(v) => Some(*v),
-            Payload::ScalarF64(v) => Some(*v as f32),
-            Payload::Symbol(_) => None,
-        }
-    }
-
-    pub fn as_f64(&self) -> Option<f64> {
-        match &self.payload {
-            Payload::ScalarF16(v) => Some(v.to_f64()),
-            Payload::ScalarF32(v) => Some(*v as f64),
-            Payload::ScalarF64(v) => Some(*v),
-            Payload::Symbol(_) => None,
-        }
-    }
 }
 
 impl Node for BaseNode {
-    const TYPE_ID: u64 = fnv1a_hash("BaseNode");
+    fn type_id_static() -> u64
+    where
+        Self: Sized,
+    {
+        fnv1a_hash("BaseNode")
+    }
 
     fn id(&self) -> &Uuid {
         self.id()
+    }
+
+    fn compute(&mut self, ctx: &mut GraphContext) {
+        match &self.payload {
+            Payload::ScalarF16(v) => ctx.values.insert(*self.id(), ContextValue::ScalarF16(*v)),
+            Payload::ScalarF32(v) => ctx.values.insert(*self.id(), ContextValue::ScalarF32(*v)),
+            Payload::ScalarF64(v) => ctx.values.insert(*self.id(), ContextValue::ScalarF64(*v)),
+            Payload::Symbol(v) => ctx
+                .values
+                .insert(*self.id(), ContextValue::Symbol(v.clone())),
+        };
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn clone_box(&self) -> Box<dyn Node> {
+        Box::new(self.clone())
     }
 }

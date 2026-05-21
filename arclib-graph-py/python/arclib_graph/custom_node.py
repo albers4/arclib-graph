@@ -9,5 +9,14 @@ class CustomNode:
     def id(self) -> str:
         return self._id
 
+    def compute(self):
+        """
+        Called by the graph engine during each time step.
+
+        Override this method in your subclass to define what the node does.
+        You can access internal state (self.state) or other attributes here.
+        """
+        raise NotImplementedError("Subclasses must implement compute()")
+
     def __repr__(self):
         return f"<CustomNode id={self._id[:8]}>"

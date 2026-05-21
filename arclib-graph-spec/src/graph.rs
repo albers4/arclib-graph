@@ -1,14 +1,30 @@
 // Copyright (c) 2026 ARC (Applied Research & Computation)
 // SPDX-License-Identifier: LGPL-2.1-or-later
 
+use std::any::Any;
+
 use uuid::Uuid;
+
+use crate::context::GraphContext;
 
 pub type NodeId = Uuid;
 
 pub trait Node: 'static + Send + Sync {
-    const TYPE_ID: u64;
-
+    fn type_id_static() -> u64
+    where
+        Self: Sized;
     fn id(&self) -> &NodeId;
+    fn compute(&mut self, ctx: &mut GraphContext);
+
+    fn as_any(&self) -> &dyn Any;
+    fn as_any_mut(&mut self) -> &dyn Any;
+    fn clone_box(&self) -> Box<dyn Node>;
+}
+
+impl Clone for Box<dyn Node> {
+    fn clone(&self) -> Self {
+        self.clone_box()
+    }
 }
 
 pub trait Graph {
