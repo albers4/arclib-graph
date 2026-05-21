@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: LGPL-2.1-or-later
 
 use arclib_graph_impl::{BaseGraph, BaseNode, BaseNodeKind, DType, Payload};
-use arclib_graph_spec::Graph;
 use half::f16;
 use pyo3::{
     exceptions::{PyTypeError, PyValueError},

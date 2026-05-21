@@ -11,6 +11,7 @@ mod schedule;
 mod utils;
 
 pub use dtype::DType;
-pub use graph::BaseGraph;
+pub use graph::{BaseGraph, BaseGraphStorage};
 pub use node::{BaseNode, BaseNodeKind, Payload};
+pub use schedule::topological_sort;
 pub use utils::fnv1a_hash;

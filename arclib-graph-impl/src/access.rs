@@ -49,35 +49,4 @@ impl Graph for BaseGraph {
             .expect("Type mismatch")
             .iter_mut()
     }
-
-    fn add_node<T: Node>(&mut self, node: T) -> NodeId {
-        let id = *node.id();
-        let pool = self
-            .storage
-            .pools
-            .get_mut(&T::type_id_static())
-            .expect("Pool not registered. Call register_pool::<T>() first.");
-        let vec = pool
-            .downcast_mut::<Vec<T>>()
-            .expect("Type mismatch in pool");
-        let index = vec.len();
-        vec.push(node);
-        self.storage
-            .index_map
-            .insert(id, (T::type_id_static(), index));
-
-        id
-    }
-
-    #[track_caller]
-    fn register_pool<T: Node>(&mut self) {
-        self.storage
-            .pools
-            .entry(T::type_id_static())
-            .or_insert_with(|| Box::new(Vec::<T>::new()));
-    }
-
-    fn contains(&self, id: &NodeId) -> bool {
-        self.storage.index_map.contains_key(id)
-    }
 }

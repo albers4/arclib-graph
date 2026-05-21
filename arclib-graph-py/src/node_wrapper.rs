@@ -61,6 +61,10 @@ impl Node for PyNodeWrapper {
     fn clone_box(&self) -> Box<dyn Node> {
         Box::new(self.clone())
     }
+
+    fn as_node_mut(&mut self) -> &mut dyn Node {
+        self
+    }
 }
 
 fn convert_py_to_value(obj: &Bound<'_, PyAny>) -> Option<ContextValue> {

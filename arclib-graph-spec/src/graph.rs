@@ -16,8 +16,11 @@ pub trait Node: 'static + Send + Sync {
     fn id(&self) -> &NodeId;
     fn compute(&mut self, ctx: &mut GraphContext);
 
+    fn as_node_mut(&mut self) -> &mut dyn Node;
+
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &dyn Any;
+
     fn clone_box(&self) -> Box<dyn Node>;
 }
 
@@ -33,8 +36,4 @@ pub trait Graph {
 
     fn iter<T: Node>(&self) -> impl Iterator<Item = &T> + '_;
     fn iter_mut<T: Node>(&mut self) -> impl Iterator<Item = &mut T> + '_;
-
-    fn register_pool<T: Node>(&mut self);
-    fn add_node<T: Node>(&mut self, node: T) -> NodeId;
-    fn contains(&self, id: &NodeId) -> bool;
 }

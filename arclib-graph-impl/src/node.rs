@@ -83,6 +83,10 @@ impl Node for BaseNode {
         self.id()
     }
 
+    fn as_node_mut(&mut self) -> &mut dyn Node {
+        self
+    }
+
     fn compute(&mut self, ctx: &mut GraphContext) {
         match &self.payload {
             Payload::ScalarF16(v) => ctx.values.insert(*self.id(), ContextValue::ScalarF16(*v)),
