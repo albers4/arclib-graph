@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: LGPL-2.1-or-later
 
 use crate::{DType, utils::fnv1a_hash};
-use arclib_graph_spec::{ContextValue, GraphContext, Node};
+use arclib_graph_spec::{ContextValue, GraphContext, Node, NodeId};
 use half::f16;
 use uuid::Uuid;
 
@@ -96,6 +96,10 @@ impl Node for BaseNode {
                 .values
                 .insert(*self.id(), ContextValue::Symbol(v.clone())),
         };
+    }
+
+    fn dependencies(&self) -> Vec<NodeId> {
+        Vec::new()
     }
 
     fn as_any(&self) -> &dyn std::any::Any {

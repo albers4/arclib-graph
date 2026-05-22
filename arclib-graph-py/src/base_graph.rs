@@ -4,7 +4,7 @@
 use arclib_graph_impl::{BaseGraph, BaseNode, BaseNodeKind, DType, Payload};
 use half::f16;
 use pyo3::{
-    exceptions::{PyTypeError, PyValueError},
+    exceptions::{PyRuntimeError, PyTypeError, PyValueError},
     prelude::*,
 };
 
@@ -27,6 +27,10 @@ impl PyBaseGraph {
         Self { inner: g }
     }
 
+    fn __repr__(&self) -> PyResult<String> {
+        Ok(format!("PyBaseGraph(nodes={})", self.inner.length()))
+    }
+
     fn add_custom_node(
         mut slf: PyRefMut<'_, Self>,
         node_obj: &Bound<'_, PyAny>,
@@ -39,6 +43,11 @@ impl PyBaseGraph {
         let id = uuid::Uuid::parse_str(&id_str)
             .map_err(|e| PyValueError::new_err(format!("Invalid UUID: {}", e)))?;
 
+        let type_name = node_obj
+            .getattr("__class__")?
+            .getattr("__name__")?
+            .extract::<String>()?;
+
         let wrapper = PyNodeWrapper {
             id,
             py_instance: node_obj.clone().unbind(),
@@ -49,6 +58,8 @@ impl PyBaseGraph {
         let graph_handle: Py<PyBaseGraph> = slf.into();
         Ok(PyNodeRef {
             id,
+            type_name,
+            dtype: None,
             graph: graph_handle,
         })
     }
@@ -82,8 +93,22 @@ impl PyBaseGraph {
         let graph_handle: Py<PyBaseGraph> = slf.into();
         Ok(PyNodeRef {
             id,
+            type_name: "BaseNode".to_string(),
+            dtype: Some(dtype.to_string()),
             graph: graph_handle,
         })
+    }
+
+    fn compile(&mut self) -> PyResult<()> {
+        self.inner
+            .compile()
+            .map_err(|e| PyRuntimeError::new_err(format!("Compilation failed: {}", e)))
+    }
+
+    fn step(&mut self) -> PyResult<()> {
+        self.inner
+            .step()
+            .map_err(|e| PyRuntimeError::new_err(format!("Step failed: {}", e)))
     }
 }
 

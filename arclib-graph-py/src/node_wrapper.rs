@@ -3,7 +3,9 @@
 
 use arclib_graph_impl::fnv1a_hash;
 use arclib_graph_spec::{ContextValue, GraphContext, Node, NodeId};
+use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::*;
+use pyo3::types::PyList;
 use pyo3::{Bound, Py, PyAny, Python};
 
 pub struct PyNodeWrapper {
@@ -33,21 +35,39 @@ impl Node for PyNodeWrapper {
     }
 
     fn compute(&mut self, ctx: &mut GraphContext) {
-        Python::attach(|py| {
-            let result = self.py_instance.call_method0(py, "compute");
+        Python::attach(|py| match self.py_instance.call_method0(py, "compute") {
+            Ok(py_obj) => {
+                let bound = py_obj.bind(py);
+                if let Some(value) = py_extract_compute(bound) {
+                    ctx.values.insert(self.id, value);
+                }
+            }
+            Err(e) => {
+                e.print(py);
+            }
+        });
+    }
 
-            match result {
-                Ok(output_py) => {
-                    let output_bound = output_py.bind(py);
-                    if let Some(rust_value) = convert_py_to_value(output_bound) {
-                        ctx.values.insert(self.id, rust_value);
+    fn dependencies(&self) -> Vec<NodeId> {
+        Python::attach(
+            |py| match self.py_instance.call_method0(py, "dependencies") {
+                Ok(py_obj) => {
+                    let bound = py_obj.bind(py);
+
+                    match py_extract_dependencies(bound) {
+                        Ok(deps) => deps,
+                        Err(e) => {
+                            e.print(py);
+                            Vec::new()
+                        }
                     }
                 }
                 Err(e) => {
                     e.print(py);
+                    Vec::new()
                 }
-            }
-        });
+            },
+        )
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -67,7 +87,7 @@ impl Node for PyNodeWrapper {
     }
 }
 
-fn convert_py_to_value(obj: &Bound<'_, PyAny>) -> Option<ContextValue> {
+fn py_extract_compute(obj: &Bound<'_, PyAny>) -> Option<ContextValue> {
     if let Ok(f) = obj.extract::<f64>() {
         return Some(ContextValue::ScalarF64(f));
     }
@@ -75,4 +95,27 @@ fn convert_py_to_value(obj: &Bound<'_, PyAny>) -> Option<ContextValue> {
         return Some(ContextValue::ScalarF32(f));
     }
     None
+}
+
+fn py_extract_dependencies(obj: &Bound<'_, PyAny>) -> PyResult<Vec<NodeId>> {
+    if let Ok(uuid_str) = obj.extract::<String>() {
+        let id = NodeId::parse_str(&uuid_str)
+            .map_err(|e| PyValueError::new_err(format!("Invalid UUID: {}", e)))?;
+        return Ok(vec![id]);
+    }
+
+    if let Ok(list) = obj.cast::<PyList>() {
+        let mut deps = Vec::with_capacity(list.len());
+        for item in list.iter() {
+            let uuid_str: String = item.extract::<String>()?;
+            let id = NodeId::parse_str(&uuid_str)
+                .map_err(|e| PyValueError::new_err(format!("Invalid UUID in list: {}", e)))?;
+            deps.push(id);
+        }
+        return Ok(deps);
+    }
+
+    Err(PyTypeError::new_err(
+        "dependencies() must return a string or list of UUID strings",
+    ))
 }

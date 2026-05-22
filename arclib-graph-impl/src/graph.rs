@@ -11,6 +11,7 @@ use arclib_graph_spec::{ContextValue, GraphContext, Node, NodeId};
 use crate::{schedule::Schedule, topological_sort};
 
 pub type PoolExecuteFn = fn(&mut Box<dyn Any + Send + Sync>, usize, &mut GraphContext);
+pub type PoolDepCollectorFn = fn(&Box<dyn Any + Send + Sync>, &mut Vec<NodeId>);
 
 #[derive(Default)]
 pub struct BaseGraphStorage {
@@ -18,6 +19,7 @@ pub struct BaseGraphStorage {
     pub pools: HashMap<u64, Box<dyn Any + Send + Sync>>,
 
     pub executors: HashMap<u64, PoolExecuteFn>,
+    pub dep_collectors: HashMap<u64, PoolDepCollectorFn>,
 
     pub outgoing: HashMap<NodeId, Vec<NodeId>>,
     pub incoming: HashMap<NodeId, Vec<NodeId>>,
@@ -34,6 +36,8 @@ impl BaseGraphStorage {
         if let Entry::Vacant(e) = self.pools.entry(type_id) {
             e.insert(Box::new(Vec::<T>::new()));
             self.executors.insert(type_id, execute_wrapper::<T>);
+            self.dep_collectors
+                .insert(type_id, collect_deps_wrapper::<T>);
         }
     }
 
@@ -68,6 +72,11 @@ impl BaseGraphStorage {
 
         id
     }
+
+    pub fn connect(&mut self, source: NodeId, target: NodeId) {
+        self.outgoing.entry(source).or_default().push(target);
+        self.incoming.entry(target).or_default().push(source);
+    }
 }
 
 fn execute_wrapper<T: Node>(
@@ -79,6 +88,15 @@ fn execute_wrapper<T: Node>(
         .downcast_mut::<Vec<T>>()
         .expect("Executor type mismatch");
     vec[index].compute(ctx);
+}
+
+fn collect_deps_wrapper<T: Node>(pool: &Box<dyn Any + Send + Sync>, out: &mut Vec<NodeId>) {
+    let vec = pool
+        .downcast_ref::<Vec<T>>()
+        .expect("Executor type mismatch");
+    for node in vec {
+        out.extend(node.dependencies());
+    }
 }
 
 pub struct BaseGraph {
@@ -96,23 +114,29 @@ impl BaseGraph {
                 outgoing: HashMap::new(),
                 incoming: HashMap::new(),
                 executors: HashMap::new(),
+                dep_collectors: HashMap::new(),
             },
             schedule: None,
             values_map: HashMap::new(),
         }
     }
 
-    pub fn connect(&mut self, source: NodeId, target: NodeId) {
-        self.storage
-            .outgoing
-            .entry(source)
-            .or_default()
-            .push(target);
-        self.storage
-            .incoming
-            .entry(target)
-            .or_default()
-            .push(source);
+    pub fn length(&self) -> usize {
+        self.storage.index_map.len()
+    }
+
+    pub fn connect(&mut self, source: NodeId, target: NodeId) -> Result<(), String> {
+        if !self.storage.index_map.contains_key(&source) {
+            return Err(format!("Source node {} not found", source));
+        }
+        if !self.storage.index_map.contains_key(&target) {
+            return Err(format!("Target node {} not found", target));
+        }
+
+        self.storage.connect(source, target);
+        self.schedule = None;
+
+        Ok(())
     }
 
     pub fn register_pool<T: Node>(&mut self) {
@@ -124,20 +148,47 @@ impl BaseGraph {
     }
 
     pub fn compile(&mut self) -> Result<(), String> {
-        let order = topological_sort(&self.storage)?;
-        let mut queue = Vec::with_capacity(order.len());
+        self.validate_inputs()?;
 
+        let order = topological_sort(&self.storage)?;
+
+        let mut queue = Vec::with_capacity(order.len());
         for id in &order {
             let &(type_id, index) = self
                 .storage
                 .index_map
                 .get(id)
-                .ok_or(format!("Node {} not found", id))?;
+                .ok_or(format!("Node {} missing from storage", id))?;
             queue.push((type_id, index));
         }
 
         self.schedule = Some(Schedule::new(queue));
         self.values_map.clear();
+        Ok(())
+    }
+
+    fn validate_inputs(&self) -> Result<(), String> {
+        let mut all_deps = Vec::new();
+
+        for (&type_id, pool) in &self.storage.pools {
+            if let Some(collector) = self.storage.dep_collectors.get(&type_id) {
+                collector(pool, &mut all_deps);
+            }
+        }
+
+        let missing: Vec<NodeId> = all_deps
+            .into_iter()
+            .filter(|id| !self.storage.index_map.contains_key(id))
+            .collect();
+
+        if !missing.is_empty() {
+            return Err(format!(
+                "Validation failed: {} missing input node(s): {:?}",
+                missing.len(),
+                missing
+            ));
+        }
+
         Ok(())
     }
 

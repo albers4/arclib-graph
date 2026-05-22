@@ -15,6 +15,7 @@ pub trait Node: 'static + Send + Sync {
         Self: Sized;
     fn id(&self) -> &NodeId;
     fn compute(&mut self, ctx: &mut GraphContext);
+    fn dependencies(&self) -> Vec<NodeId>;
 
     fn as_node_mut(&mut self) -> &mut dyn Node;
 
