@@ -3,7 +3,8 @@
 
 mod base_access;
 mod base_graph;
+mod base_storage;
 mod context;
 
-pub use base_graph::{BaseGraph, BaseGraphStorage};
+pub use base_graph::BaseGraph;
 pub use context::BaseContextValue;

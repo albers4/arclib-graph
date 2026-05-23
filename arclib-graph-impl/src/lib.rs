@@ -8,10 +8,11 @@ mod error;
 mod graph;
 mod node;
 mod schedule;
+mod storage;
 mod utils;
 
-pub use base::{BaseContextValue, BaseGraph, BaseGraphStorage};
+pub use base::{BaseContextValue, BaseGraph};
 pub use dtype::DType;
-pub use graph::{Graph, GraphStorage};
+pub use graph::Graph;
 pub use node::{BaseNode, BaseNodeKind, Payload};
 pub use utils::{fnv1a_hash, topological_sort};

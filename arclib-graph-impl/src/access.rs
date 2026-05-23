@@ -1,9 +1,9 @@
 // Copyright (c) 2026 ARC (Applied Research & Computation)
 // SPDX-License-Identifier: LGPL-2.1-or-later
 
-use arclib_graph_spec::{ContextValueLike, GraphLike, Node, NodeId};
+use arclib_graph_spec::{ContextValueLike, GraphContext, GraphLike, Node, NodeId};
 
-use crate::graph::Graph;
+use crate::{graph::Graph, schedule::Schedule, topological_sort};
 
 impl<V: ContextValueLike> GraphLike<V> for Graph<V> {
     fn get_node<T: Node<V>>(&self, id: &NodeId) -> Option<&T> {
@@ -48,5 +48,86 @@ impl<V: ContextValueLike> GraphLike<V> for Graph<V> {
         pool.downcast_mut::<Vec<T>>()
             .expect("Type mismatch")
             .iter_mut()
+    }
+
+    fn compile(&mut self) -> Result<(), String> {
+        self.validate_inputs()?;
+
+        let order = topological_sort::<V>(&self.storage)?;
+
+        let mut queue = Vec::with_capacity(order.len());
+        for id in &order {
+            let &(type_id, index) = self
+                .storage
+                .index_map
+                .get(id)
+                .ok_or(format!("Node {} missing from storage", id))?;
+            queue.push((type_id, index));
+        }
+
+        self.schedule = Some(Schedule::new(queue));
+        self.values_map.clear();
+        Ok(())
+    }
+
+    fn connect(&mut self, source: NodeId, target: NodeId) -> Result<(), String> {
+        if !self.storage.index_map.contains_key(&source) {
+            return Err(format!("Source node {} not found", source));
+        }
+        if !self.storage.index_map.contains_key(&target) {
+            return Err(format!("Target node {} not found", target));
+        }
+
+        self.storage.connect(source, target);
+        self.schedule = None;
+
+        Ok(())
+    }
+
+    fn register_pool<T: Node<V>>(&mut self) {
+        self.storage.register_pool::<T>();
+    }
+
+    fn add_node<T: Node<V>>(&mut self, node: T) -> NodeId {
+        self.storage.add_node(node)
+    }
+
+    fn validate_inputs(&self) -> Result<(), String> {
+        let mut all_deps = Vec::new();
+
+        for (&type_id, pool) in &self.storage.pools {
+            if let Some(collector) = self.storage.dependency_collectors.get(&type_id) {
+                collector(pool, &mut all_deps);
+            }
+        }
+
+        let missing: Vec<NodeId> = all_deps
+            .into_iter()
+            .filter(|id| !self.storage.index_map.contains_key(id))
+            .collect();
+
+        if !missing.is_empty() {
+            return Err(format!(
+                "Validation failed: {} missing input node(s): {:?}",
+                missing.len(),
+                missing
+            ));
+        }
+
+        Ok(())
+    }
+
+    fn step(&mut self) -> Result<(), String> {
+        let schedule = self
+            .schedule
+            .as_ref()
+            .ok_or("Graph not compiled".to_string())?;
+        let mut ctx = GraphContext::new(&mut self.values_map);
+
+        for &(type_id, index) in &schedule.execution_queue {
+            self.storage.execute_node(type_id, index, &mut ctx);
+        }
+
+        Ok(())
     }
 }

@@ -41,11 +41,6 @@ pub trait GraphStorageLike<V: ContextValueLike> {
     fn dependency_collectors(&self) -> &HashMap<u64, PoolDepCollectorFn>;
     fn outgoing(&self) -> &HashMap<NodeId, Vec<NodeId>>;
     fn incoming(&self) -> &HashMap<NodeId, Vec<NodeId>>;
-
-    fn register_pool<T: Node<V>>(&mut self);
-    fn execute_node(&mut self, type_id: u64, index: usize, ctx: &mut GraphContext<'_, V>);
-    fn add_node<T: Node<V>>(&mut self, node: T) -> NodeId;
-    fn connect(&mut self, source: NodeId, target: NodeId);
 }
 
 pub trait GraphLike<V: ContextValueLike> {
@@ -54,4 +49,12 @@ pub trait GraphLike<V: ContextValueLike> {
 
     fn iter<T: Node<V>>(&self) -> impl Iterator<Item = &T> + '_;
     fn iter_mut<T: Node<V>>(&mut self) -> impl Iterator<Item = &mut T> + '_;
+
+    fn register_pool<T: Node<V>>(&mut self);
+    fn add_node<T: Node<V>>(&mut self, node: T) -> NodeId;
+    fn connect(&mut self, source: NodeId, target: NodeId) -> Result<(), String>;
+
+    fn compile(&mut self) -> Result<(), String>;
+    fn validate_inputs(&self) -> Result<(), String>;
+    fn step(&mut self) -> Result<(), String>;
 }
