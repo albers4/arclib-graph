@@ -1,7 +1,7 @@
 // Copyright (c) 2026 ARC (Applied Research & Computation)
 // SPDX-License-Identifier: LGPL-2.1-or-later
 
-use arclib_graph_spec::ContextValue;
+use arclib_graph_impl::BaseContextValue;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyAny;
@@ -42,11 +42,11 @@ impl PyNodeRef {
         let graph_ref = self.graph.borrow(py);
 
         match graph_ref.inner.values_map.get(&self.id) {
-            Some(ContextValue::ScalarF16(v)) => Ok(v.to_f32().into_pyobject(py)?.into_any()),
-            Some(ContextValue::ScalarF32(v)) => Ok(v.into_pyobject(py)?.into_any()),
-            Some(ContextValue::ScalarF64(v)) => Ok(v.into_pyobject(py)?.into_any()),
-            Some(ContextValue::Symbol(s)) => Ok(s.as_ref().into_pyobject(py)?.into_any()),
-            Some(ContextValue::Empty) | None => Err(PyValueError::new_err(
+            Some(BaseContextValue::ScalarF16(v)) => Ok(v.to_f32().into_pyobject(py)?.into_any()),
+            Some(BaseContextValue::ScalarF32(v)) => Ok(v.into_pyobject(py)?.into_any()),
+            Some(BaseContextValue::ScalarF64(v)) => Ok(v.into_pyobject(py)?.into_any()),
+            Some(BaseContextValue::Symbol(s)) => Ok(s.as_ref().into_pyobject(py)?.into_any()),
+            Some(BaseContextValue::Empty) | None => Err(PyValueError::new_err(
                 "Node has no output value yet. Ensure graph.compile() and graph.step() have been called.",
             )),
         }

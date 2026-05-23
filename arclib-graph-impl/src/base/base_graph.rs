@@ -7,59 +7,53 @@ use std::{
 };
 
 use arclib_graph_spec::{
-    ContextValueLike, GraphContext, GraphStorageLike, Node, NodeId, PoolDepCollectorFn,
-    PoolExecuteFn,
+    GraphContext, GraphStorageLike, Node, NodeId, PoolDepCollectorFn, PoolExecuteFn,
 };
 
 use crate::{
+    base::BaseContextValue,
     schedule::Schedule,
     topological_sort,
     utils::{collect_deps_wrapper, execute_wrapper},
 };
 
-pub struct GraphStorage<V: ContextValueLike> {
+#[derive(Default)]
+pub struct BaseGraphStorage {
     pub index_map: HashMap<NodeId, (u64, usize)>,
     pub pools: HashMap<u64, Box<dyn Any + Send + Sync>>,
 
-    pub executors: HashMap<u64, PoolExecuteFn<V>>,
-    pub dependency_collectors: HashMap<u64, PoolDepCollectorFn>,
+    pub executors: HashMap<u64, PoolExecuteFn<BaseContextValue>>,
+    pub depdendency_collectors: HashMap<u64, PoolDepCollectorFn>,
 
     pub outgoing: HashMap<NodeId, Vec<NodeId>>,
     pub incoming: HashMap<NodeId, Vec<NodeId>>,
 }
 
-impl<V: ContextValueLike> Default for GraphStorage<V> {
-    fn default() -> Self {
-        Self {
-            index_map: Default::default(),
-            pools: Default::default(),
-            executors: Default::default(),
-            dependency_collectors: Default::default(),
-            outgoing: Default::default(),
-            incoming: Default::default(),
-        }
-    }
-}
-
-impl<V: ContextValueLike> GraphStorage<V> {
+impl BaseGraphStorage {
     pub fn new() -> Self {
         Self::default()
     }
 }
 
-impl<V: ContextValueLike> GraphStorageLike<V> for GraphStorage<V> {
+impl GraphStorageLike<BaseContextValue> for BaseGraphStorage {
     #[track_caller]
-    fn register_pool<T: Node<V>>(&mut self) {
+    fn register_pool<T: Node<BaseContextValue>>(&mut self) {
         let type_id = T::type_id_static();
         if let Entry::Vacant(e) = self.pools.entry(type_id) {
             e.insert(Box::new(Vec::<T>::new()));
-            self.executors.insert(type_id, execute_wrapper::<V, T>);
-            self.dependency_collectors
-                .insert(type_id, collect_deps_wrapper::<V, T>);
+            self.executors
+                .insert(type_id, execute_wrapper::<BaseContextValue, T>);
+            self.depdendency_collectors
+                .insert(type_id, collect_deps_wrapper::<BaseContextValue, T>);
         }
     }
 
-    fn execute_node(&mut self, type_id: u64, index: usize, ctx: &mut GraphContext<'_, V>) {
+    fn execute_node(
+        &mut self,
+        type_id: u64,
+        index: usize,
+        ctx: &mut GraphContext<'_, BaseContextValue>,
+    ) {
         let pool = self
             .pools
             .get_mut(&type_id)
@@ -72,7 +66,7 @@ impl<V: ContextValueLike> GraphStorageLike<V> for GraphStorage<V> {
         executor(pool, index, ctx);
     }
 
-    fn add_node<T: Node<V>>(&mut self, node: T) -> NodeId {
+    fn add_node<T: Node<BaseContextValue>>(&mut self, node: T) -> NodeId {
         let id = *node.id();
         let type_id = T::type_id_static();
 
@@ -104,12 +98,12 @@ impl<V: ContextValueLike> GraphStorageLike<V> for GraphStorage<V> {
         &self.pools
     }
 
-    fn executors(&self) -> &HashMap<u64, PoolExecuteFn<V>> {
+    fn executors(&self) -> &HashMap<u64, arclib_graph_spec::PoolExecuteFn<BaseContextValue>> {
         &self.executors
     }
 
-    fn dependency_collectors(&self) -> &HashMap<u64, PoolDepCollectorFn> {
-        &self.dependency_collectors
+    fn dependency_collectors(&self) -> &HashMap<u64, arclib_graph_spec::PoolDepCollectorFn> {
+        &self.depdendency_collectors
     }
 
     fn outgoing(&self) -> &HashMap<NodeId, Vec<NodeId>> {
@@ -121,22 +115,22 @@ impl<V: ContextValueLike> GraphStorageLike<V> for GraphStorage<V> {
     }
 }
 
-pub struct Graph<V: ContextValueLike> {
-    pub storage: GraphStorage<V>,
+pub struct BaseGraph {
+    pub storage: BaseGraphStorage,
     pub schedule: Option<Schedule>,
-    pub values_map: HashMap<NodeId, V>,
+    pub values_map: HashMap<NodeId, BaseContextValue>,
 }
 
-impl<V: ContextValueLike> Graph<V> {
+impl BaseGraph {
     pub fn new() -> Self {
         Self {
-            storage: GraphStorage {
+            storage: BaseGraphStorage {
                 index_map: HashMap::new(),
                 pools: HashMap::new(),
                 outgoing: HashMap::new(),
                 incoming: HashMap::new(),
                 executors: HashMap::new(),
-                dependency_collectors: HashMap::new(),
+                depdendency_collectors: HashMap::new(),
             },
             schedule: None,
             values_map: HashMap::new(),
@@ -161,18 +155,18 @@ impl<V: ContextValueLike> Graph<V> {
         Ok(())
     }
 
-    pub fn register_pool<T: Node<V>>(&mut self) {
+    pub fn register_pool<T: Node<BaseContextValue>>(&mut self) {
         self.storage.register_pool::<T>();
     }
 
-    pub fn add_node<T: Node<V>>(&mut self, node: T) -> NodeId {
+    pub fn add_node<T: Node<BaseContextValue>>(&mut self, node: T) -> NodeId {
         self.storage.add_node(node)
     }
 
     pub fn compile(&mut self) -> Result<(), String> {
         self.validate_inputs()?;
 
-        let order = topological_sort::<V>(&self.storage)?;
+        let order = topological_sort::<BaseContextValue>(&self.storage)?;
 
         let mut queue = Vec::with_capacity(order.len());
         for id in &order {
@@ -193,7 +187,7 @@ impl<V: ContextValueLike> Graph<V> {
         let mut all_deps = Vec::new();
 
         for (&type_id, pool) in &self.storage.pools {
-            if let Some(collector) = self.storage.dependency_collectors.get(&type_id) {
+            if let Some(collector) = self.storage.depdendency_collectors.get(&type_id) {
                 collector(pool, &mut all_deps);
             }
         }
@@ -229,7 +223,7 @@ impl<V: ContextValueLike> Graph<V> {
     }
 }
 
-impl<V: ContextValueLike> Default for Graph<V> {
+impl Default for BaseGraph {
     fn default() -> Self {
         Self::new()
     }

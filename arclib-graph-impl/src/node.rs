@@ -1,8 +1,8 @@
 // Copyright (c) 2026 ARC (Applied Research & Computation)
 // SPDX-License-Identifier: LGPL-2.1-or-later
 
-use crate::{DType, utils::fnv1a_hash};
-use arclib_graph_spec::{ContextValue, GraphContext, Node, NodeId};
+use crate::{DType, base::BaseContextValue, utils::fnv1a_hash};
+use arclib_graph_spec::{GraphContext, Node, NodeId};
 use half::f16;
 use uuid::Uuid;
 
@@ -71,7 +71,7 @@ impl BaseNode {
     }
 }
 
-impl Node for BaseNode {
+impl Node<BaseContextValue> for BaseNode {
     fn type_id_static() -> u64
     where
         Self: Sized,
@@ -83,18 +83,24 @@ impl Node for BaseNode {
         self.id()
     }
 
-    fn as_node_mut(&mut self) -> &mut dyn Node {
+    fn as_node_mut(&mut self) -> &mut dyn Node<BaseContextValue> {
         self
     }
 
-    fn compute(&mut self, ctx: &mut GraphContext) {
+    fn compute(&mut self, ctx: &mut GraphContext<'_, BaseContextValue>) {
         match &self.payload {
-            Payload::ScalarF16(v) => ctx.values.insert(*self.id(), ContextValue::ScalarF16(*v)),
-            Payload::ScalarF32(v) => ctx.values.insert(*self.id(), ContextValue::ScalarF32(*v)),
-            Payload::ScalarF64(v) => ctx.values.insert(*self.id(), ContextValue::ScalarF64(*v)),
+            Payload::ScalarF16(v) => ctx
+                .values
+                .insert(*self.id(), BaseContextValue::ScalarF16(*v)),
+            Payload::ScalarF32(v) => ctx
+                .values
+                .insert(*self.id(), BaseContextValue::ScalarF32(*v)),
+            Payload::ScalarF64(v) => ctx
+                .values
+                .insert(*self.id(), BaseContextValue::ScalarF64(*v)),
             Payload::Symbol(v) => ctx
                 .values
-                .insert(*self.id(), ContextValue::Symbol(v.clone())),
+                .insert(*self.id(), BaseContextValue::Symbol(v.clone())),
         };
     }
 
@@ -110,7 +116,7 @@ impl Node for BaseNode {
         self
     }
 
-    fn clone_box(&self) -> Box<dyn Node> {
+    fn clone_box(&self) -> Box<dyn Node<BaseContextValue>> {
         Box::new(self.clone())
     }
 }

@@ -1,12 +1,12 @@
 // Copyright (c) 2026 ARC (Applied Research & Computation)
 // SPDX-License-Identifier: LGPL-2.1-or-later
 
-use arclib_graph_spec::{ContextValueLike, GraphLike, Node, NodeId};
+use arclib_graph_spec::{GraphLike, Node, NodeId};
 
-use crate::graph::Graph;
+use crate::{BaseGraph, base::BaseContextValue};
 
-impl<V: ContextValueLike> GraphLike<V> for Graph<V> {
-    fn get_node<T: Node<V>>(&self, id: &NodeId) -> Option<&T> {
+impl GraphLike<BaseContextValue> for BaseGraph {
+    fn get_node<T: Node<BaseContextValue>>(&self, id: &NodeId) -> Option<&T> {
         let &(type_id, index) = self.storage.index_map.get(id)?;
         if type_id != T::type_id_static() {
             return None;
@@ -18,7 +18,7 @@ impl<V: ContextValueLike> GraphLike<V> for Graph<V> {
             .and_then(|v| v.get(index))
     }
 
-    fn get_node_mut<T: Node<V>>(&mut self, id: &NodeId) -> Option<&mut T> {
+    fn get_node_mut<T: Node<BaseContextValue>>(&mut self, id: &NodeId) -> Option<&mut T> {
         let &(type_id, index) = self.storage.index_map.get(id)?;
         if type_id != T::type_id_static() {
             return None;
@@ -30,7 +30,7 @@ impl<V: ContextValueLike> GraphLike<V> for Graph<V> {
             .and_then(|v| v.get_mut(index))
     }
 
-    fn iter<T: Node<V>>(&self) -> impl Iterator<Item = &T> + '_ {
+    fn iter<T: Node<BaseContextValue>>(&self) -> impl Iterator<Item = &T> + '_ {
         let pool = self
             .storage
             .pools
@@ -39,7 +39,7 @@ impl<V: ContextValueLike> GraphLike<V> for Graph<V> {
         pool.downcast_ref::<Vec<T>>().expect("Type mismatch").iter()
     }
 
-    fn iter_mut<T: Node<V>>(&mut self) -> impl Iterator<Item = &mut T> + '_ {
+    fn iter_mut<T: Node<BaseContextValue>>(&mut self) -> impl Iterator<Item = &mut T> + '_ {
         let pool = self
             .storage
             .pools

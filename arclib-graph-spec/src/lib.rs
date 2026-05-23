@@ -8,5 +8,5 @@ mod graph;
 mod knowledge;
 mod runtime;
 
-pub use context::{ContextValue, GraphContext};
-pub use graph::{Graph, Node, NodeId};
+pub use context::{ContextValueLike, GraphContext};
+pub use graph::{GraphLike, GraphStorageLike, Node, NodeId, PoolDepCollectorFn, PoolExecuteFn};
