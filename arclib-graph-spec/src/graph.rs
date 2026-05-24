@@ -17,6 +17,13 @@ pub trait Node<V: ContextValueLike>: 'static + Send + Sync {
     where
         Self: Sized;
     fn id(&self) -> &NodeId;
+    fn name(&self) -> &str {
+        std::any::type_name::<Self>()
+            .split("::")
+            .last()
+            .unwrap_or("Unknown")
+    }
+
     fn compute(&mut self, ctx: &mut GraphContext<'_, V>);
     fn dependencies(&self) -> Vec<NodeId>;
 
