@@ -1,7 +1,7 @@
 // Copyright (c) 2026 ARC (Applied Research & Computation)
 // SPDX-License-Identifier: LGPL-2.1-or-later
 
-use std::{any::Any, collections::HashMap};
+use std::{any::Any, collections::HashMap, fmt::Debug};
 
 use uuid::Uuid;
 
@@ -43,7 +43,7 @@ pub trait GraphStorageLike<V: ContextValueLike> {
     fn incoming(&self) -> &HashMap<NodeId, Vec<NodeId>>;
 }
 
-pub trait GraphLike<V: ContextValueLike> {
+pub trait GraphLike<V: ContextValueLike>: Debug {
     fn get_node<T: Node<V>>(&self, id: &NodeId) -> Option<&T>;
     fn get_node_mut<T: Node<V>>(&mut self, id: &NodeId) -> Option<&mut T>;
 

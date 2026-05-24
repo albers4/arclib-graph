@@ -1,7 +1,7 @@
 // Copyright (c) 2026 ARC (Applied Research & Computation)
 // SPDX-License-Identifier: LGPL-2.1-or-later
 
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Debug};
 
 use arclib_graph_spec::NodeId;
 
@@ -40,5 +40,12 @@ impl BaseGraph {
 impl Default for BaseGraph {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl Debug for BaseGraph {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "BaseGraph")
+        //f.debug_struct("BaseGraph").field("storage", &self.storage).field("schedule", &self.schedule).field("values_map", &self.values_map).finish()
     }
 }
