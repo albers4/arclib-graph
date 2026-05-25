@@ -14,6 +14,7 @@ pub struct BaseGraph {
     pub storage: BaseGraphStorage,
     pub schedule: Option<Schedule>,
     pub values_map: HashMap<NodeId, BaseContextValue>,
+    pub node_names: HashMap<NodeId, String>,
 }
 
 impl BaseGraph {
@@ -25,10 +26,11 @@ impl BaseGraph {
                 outgoing: HashMap::new(),
                 incoming: HashMap::new(),
                 executors: HashMap::new(),
-                depdendency_collectors: HashMap::new(),
+                dependency_collectors: HashMap::new(),
             },
             schedule: None,
             values_map: HashMap::new(),
+            node_names: HashMap::new(),
         }
     }
 
@@ -45,7 +47,52 @@ impl Default for BaseGraph {
 
 impl Debug for BaseGraph {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "BaseGraph")
-        //f.debug_struct("BaseGraph").field("storage", &self.storage).field("schedule", &self.schedule).field("values_map", &self.values_map).finish()
+        let mut out = String::new();
+        out.push_str("--- Graph ---\n");
+        if let Some(schedule) = &self.schedule {
+            for (i, (tid, idx)) in schedule.execution_queue.iter().enumerate() {
+                let name = self
+                    .storage
+                    .index_map
+                    .iter()
+                    .find_map(|(id, &(t, i))| {
+                        if t == *tid && i == *idx {
+                            Some(id)
+                        } else {
+                            None
+                        }
+                    })
+                    .and_then(|id| self.node_names.get(id))
+                    .map(|s| s.as_str())
+                    .unwrap_or("Unknown");
+                out.push_str(&format!(
+                    "[{:04}] {} (TypeID: {}, PoolIdx: {})\n",
+                    i, name, tid, idx
+                ));
+            }
+        } else {
+            out.push_str("(Not compiled)\n");
+        }
+
+        out.push_str("\n--- Connections ---\n");
+        for (src, targets) in &self.storage.outgoing {
+            let src_name = self
+                .node_names
+                .get(src)
+                .map(|s| s.as_str())
+                .unwrap_or("Unknown");
+            let tgt_names: Vec<&str> = targets
+                .iter()
+                .map(|id| {
+                    self.node_names
+                        .get(id)
+                        .map(|s| s.as_str())
+                        .unwrap_or("Unknown")
+                })
+                .collect();
+            out.push_str(&format!("{} -> {:?}\n", src_name, tgt_names));
+        }
+
+        write!(f, "{}", out)
     }
 }

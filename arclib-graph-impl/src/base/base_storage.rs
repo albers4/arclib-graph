@@ -21,7 +21,7 @@ pub struct BaseGraphStorage {
     pub pools: HashMap<u64, Box<dyn Any + Send + Sync>>,
 
     pub executors: HashMap<u64, PoolExecuteFn<BaseContextValue>>,
-    pub depdendency_collectors: HashMap<u64, PoolDepCollectorFn>,
+    pub dependency_collectors: HashMap<u64, PoolDepCollectorFn>,
 
     pub outgoing: HashMap<NodeId, Vec<NodeId>>,
     pub incoming: HashMap<NodeId, Vec<NodeId>>,
@@ -39,7 +39,7 @@ impl BaseGraphStorage {
             e.insert(Box::new(Vec::<T>::new()));
             self.executors
                 .insert(type_id, execute_wrapper::<BaseContextValue, T>);
-            self.depdendency_collectors
+            self.dependency_collectors
                 .insert(type_id, collect_deps_wrapper::<BaseContextValue, T>);
         }
     }
@@ -85,6 +85,18 @@ impl BaseGraphStorage {
         self.outgoing.entry(source).or_default().push(target);
         self.incoming.entry(target).or_default().push(source);
     }
+
+    pub fn build_dependency_edges(&mut self) {
+        let mut edges = Vec::new();
+        for (&_, &(tid, idx)) in &self.index_map {
+            if let Some(collector) = self.dependency_collectors.get(&tid) {
+                collector(&self.pools[&tid], idx, &mut edges);
+            }
+        }
+        for (src, tgt) in edges {
+            self.connect(src, tgt);
+        }
+    }
 }
 
 impl GraphStorageLike<BaseContextValue> for BaseGraphStorage {
@@ -101,7 +113,7 @@ impl GraphStorageLike<BaseContextValue> for BaseGraphStorage {
     }
 
     fn dependency_collectors(&self) -> &HashMap<u64, arclib_graph_spec::PoolDepCollectorFn> {
-        &self.depdendency_collectors
+        &self.dependency_collectors
     }
 
     fn outgoing(&self) -> &HashMap<NodeId, Vec<NodeId>> {

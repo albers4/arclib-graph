@@ -74,7 +74,7 @@ impl GraphLike<BaseContextValue> for BaseGraph {
 
     fn compile(&mut self) -> Result<(), String> {
         self.validate_inputs()?;
-
+        self.storage.build_dependency_edges();
         let order = topological_sort::<BaseContextValue>(&self.storage)?;
 
         let mut queue = Vec::with_capacity(order.len());
@@ -93,28 +93,32 @@ impl GraphLike<BaseContextValue> for BaseGraph {
     }
 
     fn validate_inputs(&self) -> Result<(), String> {
-        let mut all_deps = Vec::new();
+        let mut edges = Vec::new();
+        let mut missing = Vec::new();
 
-        for (&type_id, pool) in &self.storage.pools {
-            if let Some(collector) = self.storage.depdendency_collectors.get(&type_id) {
-                collector(pool, &mut all_deps);
+        for (&_, &(type_id, index)) in &self.storage.index_map {
+            if let Some(collector) = self.storage.dependency_collectors.get(&type_id)
+                && let Some(pool) = self.storage.pools.get(&type_id)
+            {
+                collector(pool, index, &mut edges);
+            }
+
+            for (src_id, _) in edges.drain(..) {
+                if !self.storage.index_map.contains_key(&src_id) {
+                    missing.push(src_id);
+                }
             }
         }
 
-        let missing: Vec<NodeId> = all_deps
-            .into_iter()
-            .filter(|id| !self.storage.index_map.contains_key(id))
-            .collect();
-
-        if !missing.is_empty() {
-            return Err(format!(
+        if missing.is_empty() {
+            Ok(())
+        } else {
+            Err(format!(
                 "Validation failed: {} missing input node(s): {:?}",
                 missing.len(),
                 missing
-            ));
+            ))
         }
-
-        Ok(())
     }
 
     fn step(&mut self) -> Result<(), String> {

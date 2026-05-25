@@ -10,7 +10,7 @@ use crate::{ContextValueLike, context::GraphContext};
 pub type NodeId = Uuid;
 
 pub type PoolExecuteFn<V> = fn(&mut Box<dyn Any + Send + Sync>, usize, &mut GraphContext<'_, V>);
-pub type PoolDepCollectorFn = fn(&Box<dyn Any + Send + Sync>, &mut Vec<NodeId>);
+pub type PoolDepCollectorFn = fn(&Box<dyn Any + Send + Sync>, usize, &mut Vec<(NodeId, NodeId)>);
 
 pub trait Node<V: ContextValueLike>: 'static + Send + Sync {
     fn type_id_static() -> u64

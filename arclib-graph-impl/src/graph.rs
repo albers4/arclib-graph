@@ -11,6 +11,7 @@ pub struct Graph<V: ContextValueLike> {
     pub storage: GraphStorage<V>,
     pub schedule: Option<Schedule>,
     pub values_map: HashMap<NodeId, V>,
+    pub node_names: HashMap<NodeId, String>,
 }
 
 impl<V: ContextValueLike> Graph<V> {
@@ -26,6 +27,7 @@ impl<V: ContextValueLike> Graph<V> {
             },
             schedule: None,
             values_map: HashMap::new(),
+            node_names: HashMap::new(),
         }
     }
 
@@ -46,7 +48,24 @@ impl<V: ContextValueLike> Debug for Graph<V> {
         out.push_str("--- Graph ---\n");
         if let Some(schedule) = &self.schedule {
             for (i, (tid, idx)) in schedule.execution_queue.iter().enumerate() {
-                out.push_str(&format!("[{:02}] TypeID: {}, PoolIdx: {}\n", i, tid, idx));
+                let name = self
+                    .storage
+                    .index_map
+                    .iter()
+                    .find_map(|(id, &(t, i))| {
+                        if t == *tid && i == *idx {
+                            Some(id)
+                        } else {
+                            None
+                        }
+                    })
+                    .and_then(|id| self.node_names.get(id))
+                    .map(|s| s.as_str())
+                    .unwrap_or("Unknown");
+                out.push_str(&format!(
+                    "[{:04}] {} (TypeID: {}, PoolIdx: {})\n",
+                    i, name, tid, idx
+                ));
             }
         } else {
             out.push_str("(Not compiled)\n");
@@ -54,7 +73,21 @@ impl<V: ContextValueLike> Debug for Graph<V> {
 
         out.push_str("\n--- Connections ---\n");
         for (src, targets) in &self.storage.outgoing {
-            out.push_str(&format!("{} -> {:?}\n", src, targets));
+            let src_name = self
+                .node_names
+                .get(src)
+                .map(|s| s.as_str())
+                .unwrap_or("Unknown");
+            let tgt_names: Vec<&str> = targets
+                .iter()
+                .map(|id| {
+                    self.node_names
+                        .get(id)
+                        .map(|s| s.as_str())
+                        .unwrap_or("Unknown")
+                })
+                .collect();
+            out.push_str(&format!("{} -> {:?}\n", src_name, tgt_names));
         }
 
         write!(f, "{}", out)

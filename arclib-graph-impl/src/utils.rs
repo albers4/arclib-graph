@@ -36,13 +36,16 @@ pub fn execute_wrapper<V: ContextValueLike, T: Node<V>>(
 
 pub fn collect_deps_wrapper<V: ContextValueLike, T: Node<V>>(
     pool: &Box<dyn Any + Send + Sync>,
-    out: &mut Vec<NodeId>,
+    index: usize,
+    out: &mut Vec<(NodeId, NodeId)>,
 ) {
-    let vec = pool
-        .downcast_ref::<Vec<T>>()
-        .expect("Executor type mismatch");
-    for node in vec {
-        out.extend(node.dependencies());
+    if let Some(vec) = pool.downcast_ref::<Vec<T>>()
+        && let Some(node) = vec.get(index)
+    {
+        let self_id = *node.id();
+        for dep_id in node.dependencies() {
+            out.push((dep_id, self_id));
+        }
     }
 }
 
