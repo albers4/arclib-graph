@@ -12,6 +12,15 @@ pub type NodeId = Uuid;
 pub type PoolExecuteFn<V> = fn(&mut Box<dyn Any + Send + Sync>, usize, &mut GraphContext<'_, V>);
 pub type PoolDepCollectorFn = fn(&Box<dyn Any + Send + Sync>, usize, &mut Vec<(NodeId, NodeId)>);
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Shape(pub Vec<usize>);
+
+impl Shape {
+    pub fn flat_size(&self) -> usize {
+        self.0.iter().product()
+    }
+}
+
 pub trait Node<V: ContextValueLike>: 'static + Send + Sync {
     fn type_id_static() -> u64
     where
@@ -27,6 +36,11 @@ pub trait Node<V: ContextValueLike>: 'static + Send + Sync {
     fn compute(&mut self, ctx: &mut GraphContext<'_, V>);
     fn dependencies(&self) -> Vec<NodeId>;
 
+    fn infer_shape(&self, _inputs: &[Shape]) -> Result<Shape, String> {
+        Err("Shape inference not implemented for this node type".to_string())
+    }
+
+    fn as_node(&self) -> &dyn Node<V>;
     fn as_node_mut(&mut self) -> &mut dyn Node<V>;
 
     fn as_any(&self) -> &dyn Any;

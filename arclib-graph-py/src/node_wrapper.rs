@@ -82,6 +82,10 @@ impl Node<BaseContextValue> for PyNodeWrapper {
         Box::new(self.clone())
     }
 
+    fn as_node(&self) -> &dyn Node<BaseContextValue> {
+        self
+    }
+
     fn as_node_mut(&mut self) -> &mut dyn Node<BaseContextValue> {
         self
     }
