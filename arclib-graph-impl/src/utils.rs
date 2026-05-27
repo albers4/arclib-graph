@@ -49,6 +49,26 @@ pub fn collect_deps_wrapper<V: ContextValueLike, T: Node<V>>(
     }
 }
 
+pub fn as_node_wrapper<V: ContextValueLike, T: Node<V>>(
+    pool: &Box<dyn Any + Send + Sync>,
+    index: usize,
+) -> &dyn Node<V> {
+    let vec = pool
+        .downcast_ref::<Vec<T>>()
+        .expect("Pool downcast failed in as_node_wrapper");
+    &vec[index]
+}
+
+pub fn as_node_mut_wrapper<V: ContextValueLike, T: Node<V>>(
+    pool: &mut Box<dyn Any + Send + Sync>,
+    index: usize,
+) -> &mut dyn Node<V> {
+    let vec = pool
+        .downcast_mut::<Vec<T>>()
+        .expect("Pool downcast failed in as_node_mut_wrapper");
+    &mut vec[index]
+}
+
 pub fn topological_sort<V: ContextValueLike>(
     storage: &impl GraphStorageLike<V>,
 ) -> Result<Vec<NodeId>, String> {

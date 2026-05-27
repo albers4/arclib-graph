@@ -66,7 +66,10 @@ impl<V: ContextValueLike> GraphLike<V> for Graph<V> {
         }
 
         self.schedule = Some(Schedule::new(queue));
-        self.values_map.clear();
+
+        self.temp_map.clear();
+        self.next_state_map.clear();
+
         Ok(())
     }
 
@@ -127,12 +130,97 @@ impl<V: ContextValueLike> GraphLike<V> for Graph<V> {
             .schedule
             .as_ref()
             .ok_or("Graph not compiled".to_string())?;
-        let mut ctx = GraphContext::new(&mut self.values_map);
+
+        self.temp_map.clear();
+        self.next_state_map.clear();
+
+        let mut ctx = GraphContext::new(
+            &mut self.temp_map,
+            &self.state_map,
+            &mut self.next_state_map,
+        );
 
         for &(type_id, index) in &schedule.execution_queue {
+            println!("Executing type_id: {}, index: {}", type_id, index);
             self.storage.execute_node(type_id, index, &mut ctx);
         }
 
+        // Drain shadow buffer (next_state) into persistant state (state)
+        for (k, v) in self.next_state_map.drain() {
+            self.state_map.insert(k, v);
+        }
+
+        Ok(())
+    }
+
+    fn get_execution_order(&self) -> Result<Vec<NodeId>, String> {
+        if let Some(schedule) = &self.schedule {
+            let mut order = Vec::with_capacity(schedule.execution_queue.len());
+            for (tid, idx) in &schedule.execution_queue {
+                if let Some((&id, _)) = self
+                    .storage
+                    .index_map
+                    .iter()
+                    .find(|&(_, &(t, i))| t == *tid && i == *idx)
+                {
+                    order.push(id);
+                }
+            }
+            Ok(order)
+        } else {
+            Err("Graph not compiled. Call compile() beforce tracing shapes.".to_string())
+        }
+    }
+
+    fn get_node_dyn(&self, id: NodeId) -> Result<&dyn Node<V>, String> {
+        let &(type_id, index) = self
+            .storage
+            .index_map
+            .get(&id)
+            .ok_or_else(|| format!("Node {:?} not found in graph", id))?;
+
+        let pool = self
+            .storage
+            .pools
+            .get(&type_id)
+            .ok_or_else(|| format!("Pool for type_id {:?} not found", type_id))?;
+
+        let as_node_fn = self
+            .storage
+            .node_refs
+            .get(&type_id)
+            .ok_or_else(|| format!("node_refs function for type_id {:?} not found", type_id))?;
+
+        Ok(as_node_fn(pool, index))
+    }
+
+    fn get_node_dyn_mut(&mut self, id: NodeId) -> Result<&mut dyn Node<V>, String> {
+        let &(type_id, index) = self
+            .storage
+            .index_map
+            .get(&id)
+            .ok_or_else(|| format!("Node {:?} not found", id))?;
+        let pool = self.storage.pools.get_mut(&type_id).unwrap();
+        let func = self.storage.node_mut_refs.get(&type_id).unwrap();
+        Ok(func(pool, index))
+    }
+
+    fn rebuild_schedule(&mut self) -> Result<(), String> {
+        self.storage.build_dependency_edges();
+
+        let order = topological_sort::<V>(&self.storage)?;
+
+        let mut queue = Vec::with_capacity(order.len());
+        for id in &order {
+            let &(type_id, index) = self
+                .storage
+                .index_map
+                .get(id)
+                .ok_or(format!("Node {:?} missing from storage", id))?;
+            queue.push((type_id, index));
+        }
+
+        self.schedule = Some(Schedule::new(queue));
         Ok(())
     }
 }

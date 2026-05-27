@@ -8,15 +8,25 @@ use crate::NodeId;
 pub trait ContextValueLike: std::fmt::Display + Clone {}
 
 pub struct GraphContext<'a, V: ContextValueLike> {
-    pub values: &'a mut HashMap<NodeId, V>,
+    pub temp: &'a mut HashMap<NodeId, V>,
+    pub state: &'a HashMap<NodeId, V>,
+    pub next_state: &'a mut HashMap<NodeId, V>,
 }
 
 impl<'a, V: ContextValueLike> GraphContext<'a, V> {
-    pub fn new(values: &'a mut HashMap<NodeId, V>) -> Self {
-        Self { values }
+    pub fn new(
+        temp: &'a mut HashMap<NodeId, V>,
+        state: &'a HashMap<NodeId, V>,
+        next_state: &'a mut HashMap<NodeId, V>,
+    ) -> Self {
+        Self {
+            temp,
+            state,
+            next_state,
+        }
     }
 
     pub fn get(&self, id: &NodeId) -> Option<&V> {
-        self.values.get(id)
+        self.state.get(id)
     }
 }

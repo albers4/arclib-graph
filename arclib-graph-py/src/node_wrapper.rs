@@ -39,7 +39,7 @@ impl Node<BaseContextValue> for PyNodeWrapper {
             Ok(py_obj) => {
                 let bound = py_obj.bind(py);
                 if let Some(value) = py_extract_compute(bound) {
-                    ctx.values.insert(self.id, value);
+                    ctx.temp.insert(self.id, value);
                 }
             }
             Err(e) => {

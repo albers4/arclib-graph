@@ -7,11 +7,11 @@ use std::{
 };
 
 use arclib_graph_spec::{
-    ContextValueLike, GraphContext, GraphStorageLike, Node, NodeId, PoolDepCollectorFn,
-    PoolExecuteFn,
+    ContextValueLike, GraphContext, GraphStorageLike, Node, NodeId, PoolAsNodeFn, PoolAsNodeMutFn,
+    PoolDepCollectorFn, PoolExecuteFn,
 };
 
-use crate::utils::{collect_deps_wrapper, execute_wrapper};
+use crate::utils::{as_node_mut_wrapper, as_node_wrapper, collect_deps_wrapper, execute_wrapper};
 
 pub struct GraphStorage<V: ContextValueLike> {
     pub index_map: HashMap<NodeId, (u64, usize)>,
@@ -19,6 +19,8 @@ pub struct GraphStorage<V: ContextValueLike> {
 
     pub executors: HashMap<u64, PoolExecuteFn<V>>,
     pub dependency_collectors: HashMap<u64, PoolDepCollectorFn>,
+    pub node_refs: HashMap<u64, PoolAsNodeFn<V>>,
+    pub node_mut_refs: HashMap<u64, PoolAsNodeMutFn<V>>,
 
     pub outgoing: HashMap<NodeId, Vec<NodeId>>,
     pub incoming: HashMap<NodeId, Vec<NodeId>>,
@@ -31,6 +33,8 @@ impl<V: ContextValueLike> Default for GraphStorage<V> {
             pools: Default::default(),
             executors: Default::default(),
             dependency_collectors: Default::default(),
+            node_refs: Default::default(),
+            node_mut_refs: Default::default(),
             outgoing: Default::default(),
             incoming: Default::default(),
         }
@@ -50,6 +54,10 @@ impl<V: ContextValueLike> GraphStorage<V> {
             self.executors.insert(type_id, execute_wrapper::<V, T>);
             self.dependency_collectors
                 .insert(type_id, collect_deps_wrapper::<V, T>);
+
+            self.node_refs.insert(type_id, as_node_wrapper::<V, T>);
+            self.node_mut_refs
+                .insert(type_id, as_node_mut_wrapper::<V, T>);
         }
     }
 

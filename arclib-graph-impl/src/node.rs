@@ -93,17 +93,11 @@ impl Node<BaseContextValue> for BaseNode {
 
     fn compute(&mut self, ctx: &mut GraphContext<'_, BaseContextValue>) {
         match &self.payload {
-            Payload::ScalarF16(v) => ctx
-                .values
-                .insert(*self.id(), BaseContextValue::ScalarF16(*v)),
-            Payload::ScalarF32(v) => ctx
-                .values
-                .insert(*self.id(), BaseContextValue::ScalarF32(*v)),
-            Payload::ScalarF64(v) => ctx
-                .values
-                .insert(*self.id(), BaseContextValue::ScalarF64(*v)),
+            Payload::ScalarF16(v) => ctx.temp.insert(*self.id(), BaseContextValue::ScalarF16(*v)),
+            Payload::ScalarF32(v) => ctx.temp.insert(*self.id(), BaseContextValue::ScalarF32(*v)),
+            Payload::ScalarF64(v) => ctx.temp.insert(*self.id(), BaseContextValue::ScalarF64(*v)),
             Payload::Symbol(v) => ctx
-                .values
+                .temp
                 .insert(*self.id(), BaseContextValue::Symbol(v.clone())),
         };
     }

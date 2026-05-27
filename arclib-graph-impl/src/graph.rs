@@ -10,8 +10,11 @@ use crate::{schedule::Schedule, storage::GraphStorage};
 pub struct Graph<V: ContextValueLike> {
     pub storage: GraphStorage<V>,
     pub schedule: Option<Schedule>,
-    pub values_map: HashMap<NodeId, V>,
     pub node_names: HashMap<NodeId, String>,
+
+    pub temp_map: HashMap<NodeId, V>,
+    pub state_map: HashMap<NodeId, V>,
+    pub next_state_map: HashMap<NodeId, V>,
 }
 
 impl<V: ContextValueLike> Graph<V> {
@@ -24,10 +27,14 @@ impl<V: ContextValueLike> Graph<V> {
                 incoming: HashMap::new(),
                 executors: HashMap::new(),
                 dependency_collectors: HashMap::new(),
+                node_refs: HashMap::new(),
+                node_mut_refs: HashMap::new(),
             },
             schedule: None,
-            values_map: HashMap::new(),
             node_names: HashMap::new(),
+            temp_map: HashMap::new(),
+            state_map: HashMap::new(),
+            next_state_map: HashMap::new(),
         }
     }
 

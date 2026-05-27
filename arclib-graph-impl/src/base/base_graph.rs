@@ -13,8 +13,11 @@ use crate::{
 pub struct BaseGraph {
     pub storage: BaseGraphStorage,
     pub schedule: Option<Schedule>,
-    pub values_map: HashMap<NodeId, BaseContextValue>,
     pub node_names: HashMap<NodeId, String>,
+
+    pub temp_map: HashMap<NodeId, BaseContextValue>,
+    pub state_map: HashMap<NodeId, BaseContextValue>,
+    pub next_state_map: HashMap<NodeId, BaseContextValue>,
 }
 
 impl BaseGraph {
@@ -27,10 +30,14 @@ impl BaseGraph {
                 incoming: HashMap::new(),
                 executors: HashMap::new(),
                 dependency_collectors: HashMap::new(),
+                node_refs: HashMap::new(),
+                node_mut_refs: HashMap::new(),
             },
             schedule: None,
-            values_map: HashMap::new(),
             node_names: HashMap::new(),
+            temp_map: HashMap::new(),
+            state_map: HashMap::new(),
+            next_state_map: HashMap::new(),
         }
     }
 

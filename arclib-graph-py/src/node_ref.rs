@@ -41,14 +41,28 @@ impl PyNodeRef {
     fn value<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
         let graph_ref = self.graph.borrow(py);
 
-        match graph_ref.inner.values_map.get(&self.id) {
-            Some(BaseContextValue::ScalarF16(v)) => Ok(v.to_f32().into_pyobject(py)?.into_any()),
-            Some(BaseContextValue::ScalarF32(v)) => Ok(v.into_pyobject(py)?.into_any()),
-            Some(BaseContextValue::ScalarF64(v)) => Ok(v.into_pyobject(py)?.into_any()),
-            Some(BaseContextValue::Symbol(s)) => Ok(s.as_ref().into_pyobject(py)?.into_any()),
-            Some(BaseContextValue::Empty) | None => Err(PyValueError::new_err(
-                "Node has no output value yet. Ensure graph.compile() and graph.step() have been called.",
-            )),
+        let to_py = |val: &BaseContextValue| -> PyResult<Bound<'py, PyAny>> {
+            match val {
+                BaseContextValue::ScalarF16(v) => Ok(v.to_f32().into_pyobject(py)?.into_any()),
+                BaseContextValue::ScalarF32(v) => Ok(v.into_pyobject(py)?.into_any()),
+                BaseContextValue::ScalarF64(v) => Ok(v.into_pyobject(py)?.into_any()),
+                BaseContextValue::Symbol(s) => Ok(s.as_ref().into_pyobject(py)?.into_any()),
+                BaseContextValue::Empty => Err(PyValueError::new_err(
+                    "Node has no output value yet. Ensure graph.compile() and graph.step() have been called.",
+                )),
+            }
+        };
+
+        if let Some(val) = graph_ref.inner.state_map.get(&self.id) {
+            return to_py(val);
         }
+
+        if let Some(val) = graph_ref.inner.temp_map.get(&self.id) {
+            return to_py(val);
+        }
+
+        Err(PyValueError::new_err(
+            "Node hsa no output value yet, Ensure graph.compile() and graph.step have been called, or that this node is actually part of the execution graph.",
+        ))
     }
 }

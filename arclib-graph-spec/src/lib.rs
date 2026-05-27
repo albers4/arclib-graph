@@ -9,4 +9,7 @@ mod knowledge;
 mod runtime;
 
 pub use context::{ContextValueLike, GraphContext};
-pub use graph::{Shape, GraphLike, GraphStorageLike, Node, NodeId, PoolDepCollectorFn, PoolExecuteFn};
+pub use graph::{
+    GraphLike, GraphStorageLike, Node, NodeId, PoolAsNodeFn, PoolAsNodeMutFn, PoolDepCollectorFn,
+    PoolExecuteFn, Shape,
+};

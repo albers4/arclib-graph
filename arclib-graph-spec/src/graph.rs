@@ -11,6 +11,8 @@ pub type NodeId = Uuid;
 
 pub type PoolExecuteFn<V> = fn(&mut Box<dyn Any + Send + Sync>, usize, &mut GraphContext<'_, V>);
 pub type PoolDepCollectorFn = fn(&Box<dyn Any + Send + Sync>, usize, &mut Vec<(NodeId, NodeId)>);
+pub type PoolAsNodeFn<V> = fn(&Box<dyn Any + Send + Sync>, usize) -> &dyn Node<V>;
+pub type PoolAsNodeMutFn<V> = fn(&mut Box<dyn Any + Send + Sync>, usize) -> &mut dyn Node<V>;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Shape(pub Vec<usize>);
@@ -38,6 +40,10 @@ pub trait Node<V: ContextValueLike>: 'static + Send + Sync {
 
     fn infer_shape(&self, _inputs: &[Shape]) -> Result<Shape, String> {
         Err("Shape inference not implemented for this node type".to_string())
+    }
+
+    fn try_lower(&mut self, _outer_shape: &HashMap<NodeId, Shape>) -> Result<(), String> {
+        Ok(())
     }
 
     fn as_node(&self) -> &dyn Node<V>;
@@ -68,6 +74,10 @@ pub trait GraphLike<V: ContextValueLike>: Debug {
     fn get_node<T: Node<V>>(&self, id: &NodeId) -> Option<&T>;
     fn get_node_mut<T: Node<V>>(&mut self, id: &NodeId) -> Option<&mut T>;
 
+    fn get_execution_order(&self) -> Result<Vec<NodeId>, String>;
+    fn get_node_dyn(&self, id: NodeId) -> Result<&dyn Node<V>, String>;
+    fn get_node_dyn_mut(&mut self, id: NodeId) -> Result<&mut dyn Node<V>, String>;
+
     fn iter<T: Node<V>>(&self) -> impl Iterator<Item = &T> + '_;
     fn iter_mut<T: Node<V>>(&mut self) -> impl Iterator<Item = &mut T> + '_;
 
@@ -76,6 +86,7 @@ pub trait GraphLike<V: ContextValueLike>: Debug {
     fn connect(&mut self, source: NodeId, target: NodeId) -> Result<(), String>;
 
     fn compile(&mut self) -> Result<(), String>;
+    fn rebuild_schedule(&mut self) -> Result<(), String>;
     fn validate_inputs(&self) -> Result<(), String>;
     fn step(&mut self) -> Result<(), String>;
 }

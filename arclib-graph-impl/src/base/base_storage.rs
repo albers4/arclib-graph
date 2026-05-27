@@ -7,12 +7,13 @@ use std::{
 };
 
 use arclib_graph_spec::{
-    GraphContext, GraphStorageLike, Node, NodeId, PoolDepCollectorFn, PoolExecuteFn,
+    GraphContext, GraphStorageLike, Node, NodeId, PoolAsNodeFn, PoolAsNodeMutFn,
+    PoolDepCollectorFn, PoolExecuteFn,
 };
 
 use crate::{
     base::BaseContextValue,
-    utils::{collect_deps_wrapper, execute_wrapper},
+    utils::{as_node_mut_wrapper, as_node_wrapper, collect_deps_wrapper, execute_wrapper},
 };
 
 #[derive(Default)]
@@ -22,6 +23,8 @@ pub struct BaseGraphStorage {
 
     pub executors: HashMap<u64, PoolExecuteFn<BaseContextValue>>,
     pub dependency_collectors: HashMap<u64, PoolDepCollectorFn>,
+    pub node_refs: HashMap<u64, PoolAsNodeFn<BaseContextValue>>,
+    pub node_mut_refs: HashMap<u64, PoolAsNodeMutFn<BaseContextValue>>,
 
     pub outgoing: HashMap<NodeId, Vec<NodeId>>,
     pub incoming: HashMap<NodeId, Vec<NodeId>>,
@@ -41,6 +44,11 @@ impl BaseGraphStorage {
                 .insert(type_id, execute_wrapper::<BaseContextValue, T>);
             self.dependency_collectors
                 .insert(type_id, collect_deps_wrapper::<BaseContextValue, T>);
+
+            self.node_refs
+                .insert(type_id, as_node_wrapper::<BaseContextValue, T>);
+            self.node_mut_refs
+                .insert(type_id, as_node_mut_wrapper::<BaseContextValue, T>);
         }
     }
 
