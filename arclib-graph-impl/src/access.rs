@@ -141,7 +141,6 @@ impl<V: ContextValueLike> GraphLike<V> for Graph<V> {
         );
 
         for &(type_id, index) in &schedule.execution_queue {
-            println!("Executing type_id: {}, index: {}", type_id, index);
             self.storage.execute_node(type_id, index, &mut ctx);
         }
 
